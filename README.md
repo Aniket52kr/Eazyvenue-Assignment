@@ -67,7 +67,7 @@ EazyVenue is a full-stack web application where users can search, book, and mana
 
 - Uses [PositionStack API](https://positionstack.com/) to fetch coordinates and show live map on the venue details page.
 
-
+---
 
 ## 🚀 Future Enhancements (Ideation Task)
 
