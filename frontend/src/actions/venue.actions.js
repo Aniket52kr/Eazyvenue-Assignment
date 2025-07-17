@@ -3,9 +3,7 @@ import axios from '../helpers/axios';
 
 const addVenue = (form) => {
     return async (dispatch) => {
-        dispatch({
-            type: addVenueConstants.ADD_VENUE_REQUEST
-        });
+        dispatch({ type: addVenueConstants.ADD_VENUE_REQUEST });
 
         const res = await axios.post(`/create-venue`, form);
 
@@ -23,14 +21,12 @@ const addVenue = (form) => {
                 }
             });
         }
-    }
-}
+    };
+};
 
 const getVenues = () => {
     return async (dispatch) => {
-        dispatch({
-            type: venueConstants.GETALL_VENUES_REQUEST
-        });
+        dispatch({ type: venueConstants.GETALL_VENUES_REQUEST });
 
         const res = await axios.get(`/all-venues`);
 
@@ -42,45 +38,35 @@ const getVenues = () => {
         } else {
             dispatch({
                 type: venueConstants.GETALL_VENUES_FAILURE,
-                payload: {
-                    msg: res.data.msg
-                }
+                payload: { msg: res.data.msg }
             });
         }
-    }
-}
+    };
+};
 
 const getOneVenue = (id) => {
     return async (dispatch) => {
-        dispatch({
-            type: venueConstants.GETONE_VENUE_REQUEST
-        });
+        dispatch({ type: venueConstants.GETONE_VENUE_REQUEST });
 
         const res = await axios.get(`/venue/${id}`);
 
         if (res.status === 200) {
             dispatch({
                 type: venueConstants.GETONE_VENUE_SUCCESS,
-                payload: {
-                    venue: res.data._venue
-                }
+                payload: { venue: res.data._venue }
             });
         } else {
             dispatch({
                 type: venueConstants.GETONE_VENUE_FAILURE,
-                payload: {
-                    msg: res.data.msg
-                }
+                payload: { msg: res.data.msg }
             });
         }
-    }
-}
+    };
+};
 
 const getOwnerVenues = (ownerId) => {
     return async (dispatch) => {
-        dispatch({
-            type: venueConstants.GETALL_VENUES_OF_DEALER_REQUEST
-        });
+        dispatch({ type: venueConstants.GETALL_VENUES_OF_DEALER_REQUEST });
 
         const res = await axios.get(`/venues/${ownerId}`);
 
@@ -98,12 +84,41 @@ const getOwnerVenues = (ownerId) => {
                 }
             });
         }
-    }
-}
+    };
+};
+
+// ✅ New: Update Venue Action
+const updateVenue = (venueId, formData) => {
+    return async (dispatch) => {
+        dispatch({ type: venueConstants.UPDATE_VENUE_REQUEST });
+
+        try {
+            const res = await axios.put(`/venue/${venueId}`, formData);
+
+            if (res.status === 200) {
+                dispatch({
+                    type: venueConstants.UPDATE_VENUE_SUCCESS,
+                    payload: res.data.updatedVenue
+                });
+            } else {
+                dispatch({
+                    type: venueConstants.UPDATE_VENUE_FAILURE,
+                    payload: { msg: res.data.msg }
+                });
+            }
+        } catch (error) {
+            dispatch({
+                type: venueConstants.UPDATE_VENUE_FAILURE,
+                payload: { error: error.response?.data?.msg || "Something went wrong" }
+            });
+        }
+    };
+};
 
 export {
     addVenue,
     getVenues,
     getOneVenue,
-    getOwnerVenues
-}
+    getOwnerVenues,
+    updateVenue 
+};

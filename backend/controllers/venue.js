@@ -89,10 +89,47 @@ const checkAvailability = async (req, res) => {
     }
 };
 
+
+const editVenue = async (req, res) => {
+    try {
+        const { venueId } = req.params;
+
+        const venue = await Venue.findById(venueId);
+
+        if (!venue) {
+            return res.status(404).json({ msg: "Venue not found" });
+        }
+
+        // Check if logged-in user is the owner of the venue
+        if (venue.ownerId.toString() !== req.user.id) {
+            return res.status(403).json({ msg: "Unauthorized: You are not the owner of this venue" });
+        }
+
+        const updatableFields = ['venueName', 'address', 'location', 'category', 'price', 'description'];
+        updatableFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                venue[field] = req.body[field];
+            }
+        });
+
+        if (req.body.venueName) {
+            venue.slug = slugify(req.body.venueName);
+        }
+
+        const updatedVenue = await venue.save();
+
+        return res.status(200).json({ msg: "Venue updated successfully", venue: updatedVenue });
+    } catch (error) {
+        return res.status(400).json({ msg: "Something went wrong while updating the venue", error });
+    }
+};
+
+
 module.exports = {
     createVenue,
     getVenueByVenueId,
     getAllVenuesByOwnerId,
     getAllVenues,
-    checkAvailability
+    checkAvailability,
+    editVenue
 };

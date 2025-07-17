@@ -1,6 +1,6 @@
 const express = require('express');
 const { requireSignIn, dealerMiddleware } = require('../common_middlewares/index');
-const { getAllVenues, createVenue, getVenueByVenueId, getAllVenuesByOwnerId, checkAvailability } = require('../controllers/venue');
+const { getAllVenues, createVenue, getVenueByVenueId, getAllVenuesByOwnerId, checkAvailability, editVenue } = require('../controllers/venue');
 const router = express.Router();
 const multer = require('multer');
 const shortid = require('shortid');
@@ -30,5 +30,7 @@ router.get('/venue/:venueId', getVenueByVenueId);
 router.get('/venues/:ownerId', getAllVenuesByOwnerId);
 router.get('/all-venues', getAllVenues);
 router.get('/available', checkAvailability);
+router.patch('/venue/:venueId', requireSignIn, dealerMiddleware, editVenue);
+
 
 module.exports = router;

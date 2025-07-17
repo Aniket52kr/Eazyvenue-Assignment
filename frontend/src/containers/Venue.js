@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getOneVenue } from '../actions/venue.actions';
 import { getPublicURL } from '../urlConfig';
 import BookingModel from '../components/UI/BookingModel';
-import { Navigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,18 +14,84 @@ import 'leaflet/dist/leaflet.css';
 const VenuePage = () => {
     document.title = "Venue Booking App | Venue Details";
     const dispatch = useDispatch();
-    const auth = useSelector(state => state.auth);
-    const oneVenueInfo = useSelector(state => state.oneVenueInfo);
+    const { venueId } = useParams();
+    const mapRef = useRef(null);
+
     const [bookingModalShow, setBookingModalShow] = useState(false);
     const [latLng, setLatLng] = useState(null);
-    const mapRef = useRef(null); // 🧠 to track the map instance
-    const { venueId } = useParams();
+
+    const auth = useSelector(state => state.auth);
+    const oneVenueInfo = useSelector(state => state.oneVenueInfo);
+    const venue = oneVenueInfo?.venue || {};
+    const loading = oneVenueInfo?.loading;
 
     useEffect(() => {
-        if (venueId) dispatch(getOneVenue(venueId));
+        if (venueId) {
+            dispatch(getOneVenue(venueId));
+        }
     }, [venueId]);
 
-    const venue = oneVenueInfo.venue || {};
+    useEffect(() => {
+        const fetchCoordinates = async () => {
+            if (venue?.location && process.env.REACT_APP_MAP_TOKEN) {
+                try {
+                    const res = await axios.get('https://api.positionstack.com/v1/forward', {
+                        params: {
+                            access_key: process.env.REACT_APP_MAP_TOKEN,
+                            query: venue.location,
+                            limit: 1
+                        }
+                    });
+                    if (res.data?.data?.length > 0) {
+                        const { latitude, longitude } = res.data.data[0];
+                        setLatLng([latitude, longitude]);
+                    }
+                } catch (err) {
+                    console.error("Coordinate fetch failed:", err);
+                }
+            }
+        };
+        fetchCoordinates();
+    }, [venue?.location]);
+
+    useEffect(() => {
+        if (latLng && !mapRef.current) {
+            mapRef.current = L.map('venueMap').setView(latLng, 13);
+
+            const standard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mapRef.current);
+
+            const satellite = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+
+            L.marker(latLng).addTo(mapRef.current)
+                .bindPopup(`<b>${venue.venueName || "Venue"}</b><br/>Exact location after booking`)
+                .openPopup();
+
+            L.control.layers({ "Standard": standard, "Satellite": satellite }).addTo(mapRef.current);
+        }
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+        };
+    }, [latLng]);
+
+    if (loading || !venue._id) {
+        return (
+            <Layout>
+                <div className='text-center mt-5'>
+                    <h3>{loading ? "Loading venue details..." : "Venue not found!"}</h3>
+                    {loading && <Spinner animation="border" />}
+                </div>
+            </Layout>
+        );
+    }
+
     const {
         _id,
         venueName,
@@ -41,77 +107,6 @@ const VenuePage = () => {
 
     const img1 = venuePictures[0]?.img ? getPublicURL(venuePictures[0].img) : '';
     const img2 = venuePictures[1]?.img ? getPublicURL(venuePictures[1].img) : '';
-
-    // 🔍 Get coordinates from PositionStack
-    useEffect(() => {
-        const fetchCoordinates = async () => {
-            if (location && process.env.REACT_APP_MAP_TOKEN) {
-                try {
-                    const res = await axios.get('https://api.positionstack.com/v1/forward', {
-                        params: {
-                            access_key: process.env.REACT_APP_MAP_TOKEN,
-                            query: location,
-                            limit: 1
-                        }
-                    });
-                    if (res.data?.data?.length > 0) {
-                        const { latitude, longitude } = res.data.data[0];
-                        setLatLng([latitude, longitude]);
-                    }
-                } catch (err) {
-                    console.error("Error fetching coordinates:", err);
-                }
-            }
-        };
-        fetchCoordinates();
-    }, [location]);
-
-    // 🗺️ Render Leaflet map once
-    useEffect(() => {
-        if (latLng && !mapRef.current) {
-            mapRef.current = L.map('venueMap').setView(latLng, 13);
-
-            const standard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(mapRef.current);
-
-            const satellite = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            });
-
-            L.marker(latLng).addTo(mapRef.current)
-                .bindPopup(`<b>${venueName || "Venue"}</b><br/>Exact location after booking`)
-                .openPopup();
-
-            L.control.layers({
-                "Standard": standard,
-                "Satellite": satellite
-            }).addTo(mapRef.current);
-        }
-
-        return () => {
-            // 🧹 Cleanup map on unmount
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
-    }, [latLng]);
-
-    if (oneVenueInfo.loading) {
-        return (
-            <Layout>
-                <div className='text-center' style={{ marginTop: '60px' }}>
-                    <h1>Getting venue info 🎉</h1>
-                    <Spinner animation="border" variant="success" />
-                </div>
-            </Layout>
-        );
-    }
-
-    if (!venue._id) {
-        return <Navigate to="/" replace />;
-    }
 
     return (
         <Layout>
