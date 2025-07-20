@@ -2,6 +2,7 @@ const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 const shortid = require('shortid');
 
+// Register new client
 const signup = async (req, res) => {
     try {
         const existingUser = await User.findOne({ email: req.body.email });
@@ -10,14 +11,16 @@ const signup = async (req, res) => {
         }
 
         const { firstName, lastName, email, password, contactNumber } = req.body;
+
         const newUser = new User({
             firstName,
             lastName,
             email,
-            password,
             contactNumber,
             username: shortid.generate()
         });
+
+        newUser.password = password; // triggers virtual setter
 
         await newUser.save();
         return res.status(201).json({ msg: 'User successfully registered!' });
@@ -26,6 +29,7 @@ const signup = async (req, res) => {
     }
 };
 
+// Login client
 const signin = async (req, res) => {
     try {
         const user = await User.findOne({ email: req.body.email });
@@ -54,7 +58,10 @@ const signin = async (req, res) => {
                 contactNumber
             } = user;
 
-            res.cookie('token', token, { expiresIn: '2h' });
+            res.cookie('token', token, {
+                httpOnly: true,
+                expires: new Date(Date.now() + 2 * 60 * 60 * 1000) // 2h
+            });
 
             return res.status(200).json({
                 token,
@@ -71,23 +78,19 @@ const signin = async (req, res) => {
                 }
             });
         } else {
-            return res.status(400).json({ msg: 'Invalid password' });
+            return res.status(400).json({ msg: 'Invalid password or role' });
         }
     } catch (error) {
         return res.status(400).json({ msg: 'Something went wrong', error });
     }
 };
 
+// Get client profile
 const UserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        if (!userId) {
-            return res.status(404).json({ msg: `User doesn't exist` });
-        }
-
         const user = await User.findById(userId);
-
         if (!user) {
             return res.status(404).json({ msg: `User not found` });
         }
@@ -124,6 +127,7 @@ const UserProfile = async (req, res) => {
     }
 };
 
+// Logout client
 const signout = (req, res) => {
     res.clearCookie('token');
     return res.status(200).json({ msg: 'Sign-out successfully!' });
